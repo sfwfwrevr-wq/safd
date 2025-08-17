@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -15,6 +13,20 @@ export default function KaraokeWebsite() {
   const [volume, setVolume] = useState(0.8)
   const audioRef = useRef<HTMLAudioElement>(null)
 
+  // Initialize audio on component mount
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    // Set initial properties
+    audio.preload = "auto"
+    audio.volume = volume
+    audio.crossOrigin = "anonymous"
+    
+    // Force load the audio
+    audio.load()
+  }, [volume])
+
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
@@ -25,8 +37,10 @@ export default function KaraokeWebsite() {
 
     const handleCanPlay = () => {
       console.log("[v0] Audio can play")
-      audio.volume = volume
-      audio.muted = false
+      if (audio) {
+        audio.volume = volume
+        audio.muted = false
+      }
     }
 
     const updateTime = () => setCurrentTime(audio.currentTime)
@@ -50,32 +64,56 @@ export default function KaraokeWebsite() {
   const handlePlay = async () => {
     if (audioRef.current) {
       try {
-        audioRef.current.muted = false
-        audioRef.current.volume = volume
-        console.log("[v0] Attempting to play audio, volume:", audioRef.current.volume, "muted:", audioRef.current.muted)
+        const audio = audioRef.current
+        
+        // Ensure audio is ready
+        if (audio.readyState < 2) {
+          await new Promise((resolve) => {
+            audio.addEventListener('canplay', resolve, { once: true })
+            audio.load()
+          })
+        }
+        
+        audio.muted = false
+        audio.volume = volume
+        console.log("[v0] Attempting to play audio, volume:", audio.volume, "muted:", audio.muted)
 
         if (isPlaying) {
-          audioRef.current.pause()
+          audio.pause()
           console.log("[v0] Audio paused")
+          setIsPlaying(false)
         } else {
-          const playPromise = audioRef.current.play()
-          await playPromise
-          console.log("[v0] Audio started playing successfully")
+          // Create user interaction context for autoplay
+          const playPromise = audio.play()
+          if (playPromise !== undefined) {
+            await playPromise
+            console.log("[v0] Audio started playing successfully")
+            setIsPlaying(true)
+          }
         }
-        setIsPlaying(!isPlaying)
       } catch (error) {
         console.log("[v0] Play error:", error)
-        if (audioRef.current) {
-          audioRef.current.load()
-          setTimeout(async () => {
-            try {
-              await audioRef.current?.play()
-              setIsPlaying(true)
-              console.log("[v0] Audio started after reload")
-            } catch (retryError) {
-              console.log("[v0] Retry failed:", retryError)
-            }
-          }, 100)
+        
+        // Try to enable audio context on user interaction
+        try {
+          const audio = audioRef.current
+          if (audio) {
+            audio.load()
+            // Small delay then retry
+            setTimeout(async () => {
+              try {
+                await audio.play()
+                setIsPlaying(true)
+                console.log("[v0] Audio started after reload")
+              } catch (retryError) {
+                console.log("[v0] Retry failed:", retryError)
+                alert("Unable to play audio. Please check if the audio file is accessible and try again.")
+              }
+            }, 200)
+          }
+        } catch (finalError) {
+          console.log("[v0] Final retry failed:", finalError)
+          alert("Audio playback failed. Please refresh the page and try again.")
         }
       }
     }
@@ -162,12 +200,20 @@ export default function KaraokeWebsite() {
         </div>
       </main>
 
-      <audio ref={audioRef} preload="metadata" controls>
+      <audio 
+        ref={audioRef} 
+        preload="auto" 
+        crossOrigin="anonymous"
+        style={{ display: 'none' }}
+      >
         <source
           src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Ilaw%20ng%20Pag-ibig_2025-08-17T15_00_31-B4C5XM5hKrDMRobCtDL7r3jdg4aOAz.mp3"
           type="audio/mpeg"
         />
-        <source src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Ilaw%20ng%20Pag-ibig_2025-08-17T15_00_31-ebfFSIw9znCnPfnk6FQE6hUtzoZF5o.mp3" type="audio/mpeg" />
+        <source 
+          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Ilaw%20ng%20Pag-ibig_2025-08-17T15_00_31-ebfFSIw9znCnPfnk6FQE6hUtzoZF5o.mp3" 
+          type="audio/mpeg" 
+        />
         Your browser does not support the audio element.
       </audio>
     </div>
