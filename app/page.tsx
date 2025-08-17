@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Play, Pause, Square, Volume2 } from "lucide-react"
 import { KaraokeDisplay } from "@/components/karaoke-display"
+import { CodeShowcase } from "@/components/code-showcase"
 
 export default function KaraokeWebsite() {
   const [isPlaying, setIsPlaying] = useState(false)
@@ -148,6 +149,8 @@ export default function KaraokeWebsite() {
       <main className="container mx-auto px-6 py-12">
         <div className="space-y-12">
           <KaraokeDisplay currentTime={currentTime} isPlaying={isPlaying} />
+
+          <CodeShowcase />
 
           <Card className="bg-gradient-to-r from-gray-900 via-black to-gray-900 border-gray-700 shadow-2xl">
             <CardContent className="p-8">
